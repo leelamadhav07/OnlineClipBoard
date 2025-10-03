@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Online Clipboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 10px;
+    }
+    h1 { text-align: center; }
+    form {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+    input, textarea, button {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      font-size: 14px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 4px;
+      white-space: pre-wrap; /* allow multi-line wrapping */
+      word-wrap: break-word;
+    }
+    .message {
+      margin-top: 5px;
+      font-weight: bold;
+    }
+    .success { color: green; }
+    .error { color: red; }
+    #copyBtn {
+      margin-top: 10px;
+      width: auto;
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📋 Online Clipboard</h1>
+
+  <!-- Create Clip -->
+  <form id="createClipForm">
+    <h2>Create Clip</h2>
+    <input type="text" id="clipId" placeholder="Enter Clip ID" required />
+    <textarea id="clipData" placeholder="Enter Clip Data" required></textarea>
+    <button type="submit">Save Clip</button>
+    <p id="createMessage" class="message"></p>
+  </form>
+
+  <!-- View Clip -->
+  <form id="viewClipForm">
+    <h2>View Clip</h2>
+    <input type="text" id="searchId" placeholder="Enter Clip ID" required />
+    <button type="submit">Find Clip</button>
+    <p id="viewMessage" class="message"></p>
+    <pre id="clipResult"></pre>
+    <!-- Copy button (only visible when clip is found) -->
+    <button type="button" id="copyBtn" style="display:none;">Copy All</button>
+  </form>
+
+  <script>
+    const API_URL = "http://localhost:8080/clips";
+
+    // Handle create clip
+    document.getElementById("createClipForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById("clipId").value;
+      const data = document.getElementById("clipData").value;
+      const message = document.getElementById("createMessage");
+
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: data, // send raw multi-line text
+        });
+
+        if (response.ok) {
+          message.className = "message success";
+          message.textContent = "✅ Clip saved successfully!";
+        } else {
+          message.className = "message error";
+          message.textContent = "❌ Error: Could not save clip!";
+        }
+      } catch (err) {
+        message.className = "message error";
+        message.textContent = "⚠️ Could not connect to server.";
+      }
+    });
+
+    // Handle view clip
+    document.getElementById("viewClipForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const id = document.getElementById("searchId").value;
+      const message = document.getElementById("viewMessage");
+      const result = document.getElementById("clipResult");
+      const copyBtn = document.getElementById("copyBtn");
+
+      try {
+        const response = await fetch(`${API_URL}/${id}`);
+        if (response.ok) {
+          const clipData = await response.text(); // get plain text response
+          if (clipData) {
+            result.textContent = clipData;
+            message.textContent = "";
+            copyBtn.style.display = "inline-block"; // show copy button
+          } else {
+            result.textContent = "";
+            message.className = "message error";
+            message.textContent = "❌ Clip not found!";
+            copyBtn.style.display = "none";
+          }
+        } else {
+          result.textContent = "";
+          message.className = "message error";
+          message.textContent = "❌ Clip not found!";
+          copyBtn.style.display = "none";
+        }
+      } catch (err) {
+        result.textContent = "";
+        message.className = "message error";
+        message.textContent = "⚠️ Could not connect to server.";
+        copyBtn.style.display = "none";
+      }
+    });
+
+    // Handle copy button click
+    document.getElementById("copyBtn").addEventListener("click", () => {
+      const text = document.getElementById("clipResult").textContent;
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          alert("✅ Text copied to clipboard!");
+        })
+        .catch(err => {
+          console.error("Failed to copy: ", err);
+        });
+    });
+  </script>
+</body>
+</html>
